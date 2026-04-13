@@ -1,0 +1,32 @@
+{
+  "name": "mob-reading",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "doc-check": "node scripts/doc-hooks/ensure-doc-check.mjs",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run doc-check && npm run typecheck",
+    "serve:frontend": "npm run doc-check && vite --host",
+    "serve:backend": "npm run doc-check && tsx server/index.ts"
+  },
+  "dependencies": {
+    "@monaco-editor/react": "^4.6.0",
+    "express": "^4.19.2",
+    "monaco-editor": "^0.52.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "ws": "^8.17.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.12.7",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/ws": "^8.5.10",
+    "@vitejs/plugin-react": "^4.3.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.0"
+  }
+}

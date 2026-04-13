@@ -1,0 +1,7 @@
+{
+  "docs/design/": ["docs/specs/doc-governance.md"],
+  "docs/plans/": ["docs/specs/doc-governance.md"],
+  "src/": ["docs/specs/doc-governance.md"],
+  "server/": ["docs/specs/doc-governance.md"],
+  "CLAUDE.md": ["docs/specs/doc-governance.md"]
+}
