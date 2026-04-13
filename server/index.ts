@@ -1,61 +1,128 @@
+import cors from 'cors';
 import express from 'express';
 import http from 'node:http';
 import path from 'node:path';
-import { WebSocketServer, WebSocket } from 'ws';
-import { DummyTutorSessionRuntime } from './agent/runtime';
-import { AgentEvent, EditorActionApplied } from '../src/types/agent';
+import { WebSocket, WebSocketServer } from 'ws';
+import { SessionManager } from './session-manager';
+import { AgentEvent, EditorActionApplied, TutorTurnInput } from '../src/types/agent';
 
 const PORT = 4000;
-
 const app = express();
+
+app.use(cors());
 app.use(express.json());
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-const server = http.createServer(app);
-const wss = new WebSocketServer({ server, path: '/ws' });
-const sockets = new Set<WebSocket>();
+class SessionEventHub {
+  private readonly registry = new Map<string, Set<WebSocket>>();
 
-const runtime = new DummyTutorSessionRuntime({ sessionId: 'demo' });
+  subscribe(sessionId: string, socket: WebSocket): void {
+    const clients = this.registry.get(sessionId) ?? new Set<WebSocket>();
+    clients.add(socket);
+    this.registry.set(sessionId, clients);
+  }
 
-const broadcast = (event: AgentEvent) => {
-  const payload = JSON.stringify(event);
-  for (const socket of sockets) {
-    if (socket.readyState === WebSocket.OPEN) {
+  unsubscribe(sessionId: string, socket: WebSocket): void {
+    const clients = this.registry.get(sessionId);
+    if (!clients) {
+      return;
+    }
+    clients.delete(socket);
+    if (clients.size === 0) {
+      this.registry.delete(sessionId);
+    }
+  }
+
+  publish(sessionId: string, event: AgentEvent): void {
+    const clients = this.registry.get(sessionId);
+    if (!clients) {
+      return;
+    }
+    const payload = JSON.stringify(event);
+    for (const socket of clients) {
+      if (socket.readyState !== WebSocket.OPEN) {
+        continue;
+      }
       socket.send(payload);
     }
   }
-};
+}
 
-runtime.subscribe(broadcast);
-runtime.start().catch((error) => {
-  // eslint-disable-next-line no-console
-  console.error('Failed to start runtime', error);
+const eventHub = new SessionEventHub();
+const sessionManager = new SessionManager({
+  onEvent(sessionId, event) {
+    eventHub.publish(sessionId, event);
+  },
 });
 
-wss.on('connection', (socket) => {
-  sockets.add(socket);
+app.post('/api/sessions', async (_req, res) => {
+  const session = await sessionManager.createSession();
+  res.status(201).json({ sessionId: session.sessionId });
+});
 
-  // Replay history so新しい接続でもデモが見える。
-  for (const event of runtime.getHistory()) {
-    socket.send(JSON.stringify(event));
+app.post('/api/sessions/:sessionId/turns', async (req, res) => {
+  const { sessionId } = req.params;
+  const session = sessionManager.get(sessionId);
+  if (!session) {
+    return res.status(404).json({ error: 'session not found' });
+  }
+  const input = req.body as TutorTurnInput;
+  if (!input?.message && !input?.selectionContext) {
+    return res.status(400).json({ error: 'message or selectionContext required' });
+  }
+  const result = await session.runtime.handleUserTurn(input);
+  res.status(202).json({ status: 'queued', turnId: result.turnId });
+});
+
+app.post('/api/sessions/:sessionId/actions/:actionId/ack', (req, res) => {
+  const { sessionId } = req.params;
+  const session = sessionManager.get(sessionId);
+  if (!session) {
+    return res.status(404).json({ error: 'session not found' });
+  }
+  const ack = req.body as Partial<EditorActionApplied> & { status: EditorActionApplied['status'] };
+  if (!ack.actionId || !ack.turnId || !ack.status) {
+    return res.status(400).json({ error: 'missing ack properties' });
+  }
+  session.runtime.sendActionAck({
+    type: 'editor.action.applied',
+    sessionId,
+    turnId: ack.turnId,
+    actionId: ack.actionId,
+    status: ack.status,
+    reason: ack.reason,
+  });
+  res.status(204).send();
+});
+
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server, path: '/ws' });
+
+wss.on('connection', (socket, request) => {
+  const url = new URL(request.url ?? '', 'http://localhost');
+  const sessionId = url.searchParams.get('sessionId');
+  if (!sessionId) {
+    socket.close(1008, 'sessionId query parameter required');
+    return;
+  }
+  const session = sessionManager.get(sessionId);
+  if (!session) {
+    socket.close(4003, 'session not found');
+    return;
   }
 
-  socket.on('message', (data) => {
-    try {
-      const ack = JSON.parse(data.toString()) as EditorActionApplied;
-      // eslint-disable-next-line no-console
-      console.log('Ack from client', ack);
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Failed to parse WS message', error);
+  eventHub.subscribe(sessionId, socket);
+  for (const event of session.runtime.getHistory()) {
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify(event));
     }
-  });
+  }
 
   socket.on('close', () => {
-    sockets.delete(socket);
+    eventHub.unsubscribe(sessionId, socket);
   });
 });
 

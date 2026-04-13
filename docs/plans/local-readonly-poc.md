@@ -55,6 +55,7 @@
 - [ ] Backend: read_span / jump_to_definition / find_callers を Pi tool として公開。
 - [ ] teaching.turn を受けて右ペインに explanation card を描画。
 - [ ] editor.action.request → applied/rejected の往復を通す。
+- [x] session REST API + WS event hub による teaching.turn 配信。
 
 ## ローカル専用の注意
 - デプロイ不要。localhost:3000/4000 前提。

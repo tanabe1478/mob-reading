@@ -23,8 +23,21 @@ npm run serve:backend   # localhost:4000 に WS/health を起動
 npm run serve:frontend  # localhost:3000 に UI を起動
 ```
 
-- フロントエンドは WS `ws://localhost:4000/ws` に接続します（デモ server がサンプル action を送信）。
+- フロントエンドは WS `ws://localhost:4000/ws?sessionId=<sessionId>` に接続し、`sessionId` を WebSocket クエリで渡すことでイベントを受信します。
 - `npm run check` で TypeScript 型検査を実行できます。
+
+## API
+- `POST /api/sessions`
+  - body: `{}`
+  - response: `{ sessionId: string }`
+  - 1 セッションにつき 1 つ の `sessionId` を返します。
+- `POST /api/sessions/:sessionId/turns`
+  - body: `{ message?: string; selectionContext?: SelectionContext; mode?: 'selection' | 'trace' | 'architecture' | 'comparison' | 'quiz' }`
+  - response: `{ status: 'queued'; turnId: string }`
+  - AI turn をキューに追加し、バックエンドから `teaching.turn` を WebSocket で配信します。
+- `POST /api/sessions/:sessionId/actions/:actionId/ack`
+  - body: `{ turnId: string; actionId: string; status: 'applied' | 'rejected'; reason?: string }`
+  - リクエストボディはフロントエンドの ack をそのまま転送し、後続のイベント処理で利用できるようにします。
 
 ## ドキュメントフック（doc-check）
 `npm run doc-check` で `docs/specs/triggers.json` に基づき変更ファイルに対応する spec（Tier 2）を自動列挙します。`serve:frontend`, `serve:backend`, `check` はすべて `doc-check` を先に実行するため、ドキュメント リマインダーが必ず走ります。

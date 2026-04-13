@@ -108,6 +108,26 @@ export interface EditorActionApplied {
   reason?: string;
 }
 
+export interface SelectionRange {
+  startLine: number;
+  endLine: number;
+}
+
+export interface SelectionContext {
+  rawRange: SelectionRange;
+  canonicalRange: SelectionRange;
+  path: string;
+  containingSymbolId?: string;
+}
+
+export type TutorTurnMode = 'selection' | 'trace' | 'architecture' | 'comparison' | 'quiz';
+
+export interface TutorTurnInput {
+  message?: string;
+  selectionContext?: SelectionContext;
+  mode?: TutorTurnMode;
+}
+
 export type AgentEvent =
   | EditorActionRequest
   | {

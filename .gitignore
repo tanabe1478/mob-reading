@@ -5,3 +5,6 @@ dist
 .idea
 .vscode
 npm-debug.log*
+agent-plans/
+pi-mono/
+.claude/

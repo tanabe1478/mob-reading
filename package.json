@@ -11,11 +11,16 @@
     "serve:backend": "npm run doc-check && tsx server/index.ts"
   },
   "dependencies": {
+    "@mariozechner/pi-agent-core": "^0.66.1",
+    "@mariozechner/pi-ai": "^0.66.1",
+    "@mariozechner/pi-coding-agent": "^0.66.1",
     "@monaco-editor/react": "^4.6.0",
+    "cors": "^2.8.5",
     "express": "^4.19.2",
     "monaco-editor": "^0.52.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "uuid": "^9.0.0",
     "ws": "^8.17.0"
   },
   "devDependencies": {
@@ -23,6 +28,8 @@
     "@types/node": "^20.12.7",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
+    "@types/cors": "^2.8.14",
+    "@types/uuid": "^9.0.2",
     "@types/ws": "^8.5.10",
     "@vitejs/plugin-react": "^4.3.0",
     "tsx": "^4.7.0",
